@@ -3,8 +3,6 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/engelsjk/cturbo v0.0.0-20200622001320-954b84e010c2 h1:HrCGWLE/D9wCXKaChH4CNG7OiBm0QMVqQRekkldKzOs=
 github.com/engelsjk/cturbo v0.0.0-20200622001320-954b84e010c2/go.mod h1:PuzoUrcwz7uahIM9HhWhnAxCNqOLQ2mxcr3OcqhIf+I=
-github.com/engelsjk/gmartini v0.0.0-20200622201625-268f67463598 h1:Mzrt8e7snTCbPUJ1K5Z3hbtOq97UZgF8DkK0eY3S5+4=
-github.com/engelsjk/gmartini v0.0.0-20200622201625-268f67463598/go.mod h1:pk8QZaSeinO0PJjpcnvLqP/eYFFbUhs/96e1QHlau6o=
 github.com/engelsjk/gmartini v0.0.0-20200809212954-144df2586976 h1:jBxps/nbPBnFyGM5DYQXmlo8igGYtVjJ6lj3o1cfAKY=
 github.com/engelsjk/gmartini v0.0.0-20200809212954-144df2586976/go.mod h1:JffmV8xzUAlu3AF4mJvtjnTfutIigEPOWeTKlzEaww0=
 github.com/engelsjk/gomathutils v0.0.0-20200809212554-7d71f8189d4b h1:j09s6unaf9YLVpnVzM0pNys85tOUsifWps/E97qanEs=
