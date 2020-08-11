@@ -20,5 +20,9 @@ A Mapbox GL JS map runs locally (```localhost:5500```) with a raster layer sourc
   }
 ```
 
-A [gin](https://github.com/gin-gonic/gin) web API runs in the background on localhost:8080, listening for raster tile requests from the map. The API parses the Z/X/Y coordinate being requested and then forwards that request to the public [Mapbox Terrain-RGB API](https://docs.mapbox.com/help/troubleshooting/access-elevation-data/). Using the Terrain-RGB tile response, an RTIN terrain mesh is created on-the-fly using the [gmartini mesh generator](https://github.com/engelsjk/gmartini/). Mesh triangles are drawn into a PNG file which is then served as the response to the original map raster tile being requested.
+A [gin](https://github.com/gin-gonic/gin) web API runs in the background on localhost:8080, listening for raster tile requests from the map. The API parses the Z/X/Y tile coordinate being requested and then forwards that request to the public [Mapbox Terrain-RGB API](https://docs.mapbox.com/help/troubleshooting/access-elevation-data/). 
+
+The Terrain-RGB tile that is returned from the Mapbox API is then used to create an RTIN terrain mesh using the [gmartini mesh generator](https://github.com/engelsjk/gmartini/). Finally, mesh triangles from the mesh are drawn into a PNG file which is served as a response to the original map raster tile that was requested.
+
+Think of it as an on-the-fly slippy tile transmogrifying service.
 
