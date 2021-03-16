@@ -3,7 +3,7 @@
 
 <head>
 	<meta charset="utf-8" />
-	<title>Slippy RTIN</title>
+	<title>slippy gmartini</title>
 	<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
 	<script src="https://api.mapbox.com/mapbox-gl-js/v1.11.1/mapbox-gl.js"></script>
 	<link href="https://api.mapbox.com/mapbox-gl-js/v1.11.1/mapbox-gl.css" rel="stylesheet" />
@@ -27,32 +27,31 @@
 	<script>
 		mapboxgl.accessToken = '<<INSERT_TOKEN>>';
 		var map = new mapboxgl.Map({
-			container: 'map', 
-			style: {
-				'version': 8,
-				'sources': {
-					'raster-tiles': {
-						'type': 'raster',
-						'tiles': [
-							'http://localhost:8080/{z}/{x}/{y}'
-						],
-						'tileSize': 512
-					}
-				},
-				'layers': [
-					{
-						'id': 'simple-tiles',
-						'type': 'raster',
-						'source': 'raster-tiles',
-						'minzoom': 0,
-						'maxzoom': 22
-					}
-				]
-			},
-			center: [-74.5, 40], 
+			container: 'map',
+			style: 'mapbox://styles/mapbox/outdoors-v11',
+			center: [-74.5, 40],
 			zoom: 2,
 			hash: true
 		});
+
+		map.on('load', function () {
+			map.addSource('gmartini', {
+				'type': 'raster',
+				'tiles': [
+					'http://localhost:8080/raster/{z}/{x}/{y}'
+				],
+				'tileSize': 512
+			});
+
+			map.addLayer({
+				'id': 'rtin',
+				'type': 'raster',
+				'source': 'gmartini',
+				'minzoom': 0,
+				'maxzoom': 22
+			});
+		});
+
 	</script>
 
 </body>

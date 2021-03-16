@@ -1,6 +1,6 @@
-module github.com/engelsjk/slippy-rtin
+module github.com/engelsjk/slippy-gmartini
 
-go 1.14
+go 1.15
 
 require (
 	github.com/engelsjk/gmartini v0.0.0-20200809212954-144df2586976
