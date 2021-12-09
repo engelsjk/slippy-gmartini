@@ -11,5 +11,13 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Print("No .env file found")
 	}
-	slippy.Run()
+	s, err := slippy.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("listening on port %s\n", s.Port())
+	if err := s.Start(); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -1,120 +1,57 @@
 package slippygmartini
 
 import (
-	"bytes"
 	"fmt"
 	"image"
+	"log"
 	"net"
-	"net/http"
 	"net/url"
-	"os"
-	"strconv"
 
 	"github.com/engelsjk/gmartini"
+	"github.com/engelsjk/mvt"
 	"github.com/fogleman/gg"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-type Config struct {
-	Port              string
-	MapboxAccessToken string
-}
-
-func loadConfig() *Config {
-	port, _ := os.LookupEnv("PORT")
-	mapboxAccessToken, _ := os.LookupEnv("MAPBOX_ACCESS_TOKEN")
-	return &Config{
-		Port:              port,
-		MapboxAccessToken: mapboxAccessToken,
-	}
-}
-
-func Run() {
-	config := loadConfig()
-
-	r := gin.Default()
-
-	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowOrigins = []string{"*"}
-
-	r.Use(cors.New(corsConfig))
-
-	r.GET("/raster/:z/:x/:y", func(c *gin.Context) {
-
-		params, err := parseParams(c)
-		if err != nil {
-			c.String(http.StatusBadRequest, "%s", err.Error())
-			return
-		}
-
-		url := getTerrainURL(config.MapboxAccessToken, params.Z, params.X, params.Y, params.TileSize)
-		resp, err := http.Get(url)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "%s", err.Error())
-			return
-		}
-		defer resp.Body.Close()
-
-		img, _, err := image.Decode(resp.Body)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "%s", err.Error())
-			return
-		}
-
-		bytes, err := getTerrainTile(img, params.MeshError, params.TileSize)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "%s", err.Error())
-			return
-		}
-
-		c.Data(http.StatusOK, "png", bytes)
-	})
-
-	r.Run(net.JoinHostPort("localhost", config.Port))
-}
-
-type Params struct {
-	X         string
-	Y         string
-	Z         string
-	MeshError float64
+type Slippy struct {
+	config    *Config
+	router    *gin.Engine
+	MeshError float32
 	TileSize  int
 }
 
-func parseParams(c *gin.Context) (*Params, error) {
+func New() (*Slippy, error) {
 
-	z := c.Param("z")
-	y := c.Param("y")
-	x := c.Param("x")
+	var tileSize int = 512
+	var meshError float32 = 50
 
-	tilesizeStr := c.DefaultQuery("tile", "512")
-	if !(tilesizeStr == "256" || tilesizeStr == "512") {
-		return nil, fmt.Errorf("tile must be either 256 or 512")
-	}
-	tileSize, err := strconv.Atoi(tilesizeStr)
-	if err != nil {
-		return nil, fmt.Errorf("tile must be an integer")
-	}
+	config := loadConfig()
+	router := gin.Default()
 
-	meshErrStr := c.DefaultQuery("mesh", "25")
-	meshErr, err := strconv.ParseFloat(meshErrStr, 32)
-	if err != nil {
-		return nil, fmt.Errorf("mesh error must be a number")
-	}
-
-	return &Params{
-		X:         x,
-		Y:         y,
-		Z:         z,
+	s := &Slippy{
+		config:    config,
+		router:    router,
 		TileSize:  tileSize,
-		MeshError: meshErr,
-	}, nil
+		MeshError: meshError,
+	}
+
+	SetupRouter(s)
+
+	return s, nil
 }
 
-func getTerrainURL(token string, z, x, y string, tilesize int) string {
+func (s *Slippy) Start() error {
+	return s.router.Run(net.JoinHostPort("localhost", s.config.Port))
+}
+
+func (s *Slippy) Port() string {
+	return s.config.Port
+}
+
+func (s *Slippy) TerrainURL(z, x, y string) string {
+
 	var dpi string
-	if tilesize == 512 {
+	if s.TileSize == 512 {
 		dpi = "@2x"
 	}
 
@@ -125,19 +62,20 @@ func getTerrainURL(token string, z, x, y string, tilesize int) string {
 	}
 
 	q := u.Query()
-	q.Set("access_token", token)
+	q.Set("access_token", s.config.MapboxAccessToken)
 	u.RawQuery = q.Encode()
 
 	return u.String()
 }
 
-func getTerrainTile(img image.Image, meshErrInt float64, tileSizeInt int) ([]byte, error) {
+func (s *Slippy) Mesh(img image.Image) (*gmartini.Mesh, error) {
+
 	terrain, err := gmartini.DecodeElevation(img, "mapbox", true)
 	if err != nil {
 		return nil, err
 	}
 
-	martini, err := gmartini.New(gmartini.OptionGridSize(int32(tileSizeInt) + 1))
+	martini, err := gmartini.New(gmartini.OptionGridSize(int32(s.TileSize) + 1))
 	if err != nil {
 		return nil, err
 	}
@@ -147,13 +85,12 @@ func getTerrainTile(img image.Image, meshErrInt float64, tileSizeInt int) ([]byt
 		return nil, err
 	}
 
-	mesh := tile.GetMesh(gmartini.OptionMaxError(float32(meshErrInt)))
-
-	return getRaster(terrain, mesh, tileSizeInt)
+	return tile.GetMesh(gmartini.OptionMaxError(s.MeshError)), nil
 }
 
-func getRaster(terrain []float32, mesh *gmartini.Mesh, tilesize int) ([]byte, error) {
-	dc := gg.NewContext(tilesize, tilesize)
+func (s *Slippy) Raster(mesh *gmartini.Mesh, c *gin.Context) error {
+
+	dc := gg.NewContext(s.TileSize, s.TileSize)
 
 	dc.ClearPath()
 	dc.SetRGB(0, 0, 0)
@@ -170,14 +107,29 @@ func getRaster(terrain []float32, mesh *gmartini.Mesh, tilesize int) ([]byte, er
 	}
 	dc.Stroke()
 
-	buf := new(bytes.Buffer)
-	err := dc.EncodePNG(buf)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	c.Writer.Header().Set("Content-Type", "image/png")
+	return dc.EncodePNG(c.Writer)
 }
 
-func getVector(terrain []float32, mesh *gmartini.Mesh, tilesize int) []byte {
+func (s *Slippy) Vector(mesh *gmartini.Mesh, c *gin.Context) error {
+
+	log.Println("vector")
+
+	var tile mvt.Tile
+	l := tile.AddLayer("gmartini")
+	for i := 0; i < (len(mesh.Triangles) - 3); i += 3 {
+		a, b, c := mesh.Triangles[i], mesh.Triangles[i+1], mesh.Triangles[i+2]
+		ax, ay := float64(mesh.Vertices[2*a]), float64(mesh.Vertices[2*a+1])
+		bx, by := float64(mesh.Vertices[2*b]), float64(mesh.Vertices[2*b+1])
+		cx, cy := float64(mesh.Vertices[2*c]), float64(mesh.Vertices[2*c+1])
+		f := l.AddFeature(mvt.Polygon)
+		f.MoveTo(ax, ay)
+		f.LineTo(bx, by)
+		f.LineTo(cx, cy)
+		f.LineTo(ax, ay)
+		f.ClosePath()
+	}
+
+	c.Data(200, "application/vnd.mapbox-vector-tile", tile.Render())
 	return nil
 }
